@@ -1,0 +1,110 @@
+export default [
+    {
+        "_id": "A101",
+        "title": "Propulsion Assignment",
+        "course": "RS101",
+        "description": "Study the fundamental principles and applications of rocket propulsion systems",
+        "points": 100,
+        "due": "2024-05-13T23:59",
+        "availableFrom": "2024-05-06T12:00",
+        "availableUntil": "2024-05-14T23:59",
+        "type": "Assignments",
+        "gradeDisplay": "Percentage"
+    },
+    {
+        "_id": "A102",
+        "title": "Combustion Analysis",
+        "course": "RS101",
+        "description": "Analyze the combustion process in rocket engine chambers",
+        "points": 50,
+        "due": "2024-05-20T23:59",
+        "availableFrom": "2024-05-13T12:00",
+        "availableUntil": "2024-05-21T23:59",
+        "type": "Projects",
+        "gradeDisplay": "Percentage"
+    },
+    {
+        "_id": "A103",
+        "title": "Nozzle Design Project",
+        "course": "RS101",
+        "description": "Design an optimized rocket nozzle structure",
+        "points": 20,
+        "due": "2024-05-27T23:59",
+        "availableFrom": "2024-05-20T12:00",
+        "availableUntil": "2024-05-28T23:59",
+        "type": "Projects",
+        "gradeDisplay": "Letter"
+    },
+    {
+        "_id": "A201",
+        "title": "Aerodynamics Quiz",
+        "course": "RS102",
+        "description": "Basic principles of aerodynamics and fluid mechanics",
+        "points": 50,
+        "due": "2024-05-15T23:59",
+        "availableFrom": "2024-05-15T09:00",
+        "availableUntil": "2024-05-15T23:59",
+        "type": "Quizzes",
+        "gradeDisplay": "Percentage"
+    },
+    {
+        "_id": "A202",
+        "title": "Flow Analysis",
+        "course": "RS102",
+        "description": "Computational fluid dynamics analysis of rocket systems",
+        "points": 50,
+        "due": "2024-05-22T23:59",
+        "availableFrom": "2024-05-15T12:00",
+        "availableUntil": "2024-05-23T23:59",
+        "type": "Projects",
+        "gradeDisplay": "Letter"
+    },
+    {
+        "_id": "A203",
+        "title": "Heating Analysis",
+        "course": "RS102",
+        "description": "Thermal analysis of rocket components during flight",
+        "points": 10,
+        "due": "2024-05-29T23:59",
+        "availableFrom": "2024-05-22T12:00",
+        "availableUntil": "2024-05-30T23:59",
+        "type": "Assignments",
+        "gradeDisplay": "Percentage"
+    },
+    {
+        "_id": "A301",
+        "title": "Structural Design Task",
+        "course": "RS103",
+        "description": "Design and analysis of spacecraft structural components",
+        "points": 10,
+        "due": "2024-06-01T23:59",
+        "availableFrom": "2024-05-25T12:00",
+        "availableUntil": "2024-06-02T23:59",
+        "type": "Projects",
+        "gradeDisplay": "Letter"
+    },
+    {
+        "_id": "A302",
+        "title": "Orbital Calculations",
+        "course": "RS103",
+        "description": "Calculate and analyze orbital mechanics for spacecraft",
+        "points": 100,
+        "due": "2024-06-08T23:59",
+        "availableFrom": "2024-06-01T12:00",
+        "availableUntil": "2024-06-09T23:59",
+        "type": "Assignments",
+        "gradeDisplay": "Percentage"
+    },
+    {
+        "_id": "A303",
+        "title": "Systems Engineering Exam",
+        "course": "RS103",
+        "description": "Final examination on space systems engineering",
+        "points": 20,
+        "due": "2024-06-15T23:59",
+        "availableFrom": "2024-06-15T09:00",
+        "availableUntil": "2024-06-15T23:59",
+        "type": "Exams",
+        "gradeDisplay": "Percentage"
+    }
+]
