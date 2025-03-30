@@ -1,6 +1,7 @@
+{/*Generated bu AI */}
 import Database from "../Database/index.js";
 import { v4 as uuidv4 } from "uuid";
-{/*Generated bu AI */}
+
 export function findAllEnrollments() {
   return Database.enrollments;
 }
