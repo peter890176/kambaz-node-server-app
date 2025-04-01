@@ -115,6 +115,7 @@ export default function UserRoutes(app) {
   
   app.get("/api/users/:userId", findUserById);
   app.get("/api/users/:userId/courses", findCoursesForEnrolledUser);
+  app.get("/api/users/current/courses", findCoursesForEnrolledUser);
   app.post("/api/users", createUser);
   app.get("/api/users", findAllUsers);
   app.put("/api/users/:userId", updateUser);
