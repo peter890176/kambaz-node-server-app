@@ -3,9 +3,10 @@ import { v4 as uuidv4 } from "uuid";
 export function findAllCourses() {
   return model.find();
 }
-export function findCoursesForEnrolledUser(userId) {
-    const enrolledCourses = courses.filter((course) =>
-      enrollments.some((enrollment) => enrollment.user === userId && enrollment.course === course._id));
+export async function findCoursesForEnrolledUser(userId) {
+    const enrolledCourses = await model.find({
+      users: { $in: [userId] }
+    });
     return enrolledCourses;
   }
   export function createCourse(course) {
@@ -20,4 +21,6 @@ export function findCoursesForEnrolledUser(userId) {
     return model.updateOne({ _id: courseId }, { $set: courseUpdates });
 
   }
+  
+
   
