@@ -10,10 +10,10 @@ export function findModulesForCourse(courseId) {
   return model.find({ course: courseId });
 }
 export function deleteModule(moduleId) {
-  return model.findByIdAndDelete(moduleId);
+  return model.deleteOne({ _id: moduleId });
 }
 
 export function updateModule(moduleId, moduleUpdates) {
-  return model.findByIdAndUpdate(moduleId, moduleUpdates);
+  return model.updateOne({ _id: moduleId }, moduleUpdates);
 }
   
