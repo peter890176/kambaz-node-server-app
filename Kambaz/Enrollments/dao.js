@@ -28,12 +28,32 @@ export async function findCoursesForUser(userId) {
   console.log(`User ${user} successfully enrolled in course ${course}`);
   return newEnrollment;
  }
- export function unenrollUserFromCourse(user, course) {
-  return model.deleteOne({ user, course });
+ export async function unenrollUserFromCourse(user, course) {
+  try {
+    console.log(`Attempting to unenroll user ${user} from course ${course}`);
+    
+    const enrollmentId = `${user}-${course}`;
+    const result = await model.deleteOne({ _id: enrollmentId });
+    
+    console.log(`Unenroll result:`, result);
+    return { success: result.deletedCount > 0 };
+  } catch (error) {
+    console.error(`Error unenrolling user ${user} from course ${course}:`, error);
+    throw error;
+  }
  }
 
 export async function findEnrollmentsByUser(userId) {
   return await model.find({ user: userId });
+}
+
+export async function findAllEnrollments() {
+  try {
+    return await model.find({});
+  } catch (error) {
+    console.error("Error finding all enrollments:", error);
+    return [];
+  }
 }
 
  

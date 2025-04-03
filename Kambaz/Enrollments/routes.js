@@ -5,33 +5,55 @@ export default function EnrollmentRoutes(app) {
 
   
 const enrollUserInCourse = async (req, res) => {
-  let { uid, cid } = req.params;
-  if (uid === "current") {
-    const currentUser = req.session["currentUser"];
-    uid = currentUser._id;
+  try {
+    let { uid, cid } = req.params;
+    if (uid === "current") {
+      const currentUser = req.session["currentUser"];
+      uid = currentUser._id;
+    }
+    const status = await dao.enrollUserInCourse(uid, cid);
+    res.json(status);
+  } catch (error) {
+    console.error("Error enrolling user:", error);
+    res.status(500).json({ error: error.message });
   }
-  const status = await enrollmentsDao.enrollUserInCourse(uid, cid);
-  res.send(status);
 };
 const unenrollUserFromCourse = async (req, res) => {
-  let { uid, cid } = req.params;
-  if (uid === "current") {
-    const currentUser = req.session["currentUser"];
-    uid = currentUser._id;
+  try {
+    let { uid, cid } = req.params;
+    if (uid === "current") {
+      const currentUser = req.session["currentUser"];
+      uid = currentUser._id;
+    }
+    const status = await dao.unenrollUserFromCourse(uid, cid);
+    res.json(status);
+  } catch (error) {
+    console.error("Error unenrolling user:", error);
+    res.status(500).json({ error: error.message });
   }
-  const status = await enrollmentsDao.unenrollUserFromCourse(uid, cid);
-  res.send(status);
 };
 
-  app.get("/api/enrollments", (req, res) => {
-    const enrollments = dao.findAllEnrollments();
-    res.json(enrollments);
+  app.get("/api/enrollments", async (req, res) => {
+    try {
+      const enrollments = await dao.findAllEnrollments();
+      res.json(enrollments || []);
+    } catch (error) {
+      console.error("Error fetching all enrollments:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
-  app.get("/api/users/:userId/enrollments", (req, res) => {
-    const { userId } = req.params;
-    const enrollments = dao.findEnrollmentsByUser(userId);
-    res.json(enrollments);
+  app.get("/api/users/:userId/enrollments", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      console.log(`Fetching enrollments for user ${userId}`);
+      const enrollments = await dao.findEnrollmentsByUser(userId);
+      console.log(`Found ${enrollments?.length || 0} enrollments:`, enrollments);
+      res.json(enrollments || []);
+    } catch (error) {
+      console.error(`Error fetching enrollments for user ${req.params.userId}:`, error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.get("/api/courses/:courseId/enrollments", (req, res) => {
