@@ -26,18 +26,18 @@ export default function AssignmentRoutes(app) {
   });
 
 
-  app.get("/api/modules/:moduleId/assignments", (req, res) => {
-    const { moduleId } = req.params;
-    const assignments = findAssignmentsForCourse(moduleId);
+  app.get("/api/courses/:courseId/assignments", (req, res) => {
+    const { courseId } = req.params;
+    const assignments = findAssignmentsForCourse(courseId);
     res.json(assignments);
   });
 
 
-  app.post("/api/modules/:moduleId/assignments", (req, res) => {
-    const { moduleId } = req.params;
+  app.post("/api/courses/:courseId/assignments", (req, res) => {
+    const { courseId } = req.params;
     const assignment = {
       ...req.body,
-      module: moduleId,
+      course: courseId,
     };
     const newAssignment = createAssignment(assignment);
     res.json(newAssignment);
