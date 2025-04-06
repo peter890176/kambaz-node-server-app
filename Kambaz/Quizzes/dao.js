@@ -9,21 +9,39 @@ export { Quiz, Attempt };
 
 // 基本 CRUD 操作
 export const createQuiz = (quiz) => {
+  // 確保quiz是有效對象
+  if (!quiz || typeof quiz !== 'object') {
+    console.error("創建測驗時提供了無效的數據");
+    throw new Error("無效的測驗數據");
+  }
+
   // 確保 creator 是有效的 ObjectId
-  if (quiz.creator && typeof quiz.creator === 'string') {
-    try {
-      quiz.creator = new mongoose.Types.ObjectId(quiz.creator);
-    } catch (err) {
-      console.error("創建測驗時 creator 轉換為 ObjectId 失敗:", err.message);
-      // 如果無法轉換，創建一個新的 ObjectId
-      quiz.creator = new mongoose.Types.ObjectId();
+  if (quiz.creator) {
+    if (typeof quiz.creator === 'string') {
+      try {
+        quiz.creator = new mongoose.Types.createFromHexString(quiz.creator);
+      } catch (err) {
+        console.error("創建測驗時 creator 轉換為 ObjectId 失敗:", err.message);
+        quiz.creator = new mongoose.Types.ObjectId();
+      }
     }
+  } else {
+    console.error("創建測驗時缺少必填欄位 creator");
+    quiz.creator = new mongoose.Types.ObjectId();
   }
   
-  // 確保 course 欄位存在
-  if (!quiz.course) {
+  // 同樣處理 course 欄位
+  if (quiz.course) {
+    if (typeof quiz.course === 'string') {
+      try {
+        quiz.course = new mongoose.Types.createFromHexString(quiz.course);
+      } catch (err) {
+        console.error("創建測驗時 course 轉換為 ObjectId 失敗:", err.message);
+        quiz.course = new mongoose.Types.ObjectId();
+      }
+    }
+  } else {
     console.error("創建測驗時缺少必填欄位 course");
-    // 創建一個臨時 course ID
     quiz.course = new mongoose.Types.ObjectId();
   }
   

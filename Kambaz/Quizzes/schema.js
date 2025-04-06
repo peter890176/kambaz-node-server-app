@@ -47,11 +47,15 @@ const QuizSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, default: "" },
   course: { 
-    type: mongoose.Schema.Types.Mixed,  // 接受 ObjectId 或字符串
+    type: mongoose.Schema.Types.Mixed,  // 保留 Mixed 類型以接受字符串或 ObjectId
     required: true,
     ref: "Course" 
   },
-  creator: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  creator: { 
+    type: mongoose.Schema.Types.Mixed,  // 修改為 Mixed 類型以接受字符串或 ObjectId
+    required: true,
+    ref: "User" 
+  },
   quizType: {
     type: String,
     enum: ["GRADED_QUIZ", "PRACTICE_QUIZ", "GRADED_SURVEY", "UNGRADED_SURVEY"],
@@ -78,6 +82,20 @@ const QuizSchema = new mongoose.Schema({
   published: { type: Boolean, default: false },
   questions: [QuestionSchema],
 }, { timestamps: true });
+
+// 添加虛擬欄位以處理 ID 格式
+QuizSchema.virtual('courseId').get(function() {
+  return this.course.toString();
+});
+
+QuizSchema.virtual('creatorId').get(function() {
+  return this.creator.toString();
+});
+
+// 確保 toJSON 轉換包含虛擬欄位
+QuizSchema.set('toJSON', {
+  virtuals: true
+});
 
 // 只導出 Schema，不創建模型
 export { QuizSchema, AttemptSchema, QuestionSchema, ChoiceSchema };
