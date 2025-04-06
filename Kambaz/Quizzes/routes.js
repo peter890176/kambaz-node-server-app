@@ -1,404 +1,348 @@
-// routes.js
 import * as dao from "./dao.js";
 import mongoose from "mongoose";
 
 export default function QuizRoutes(app) {
-  // 獲取課程的所有測驗
+  // 查詢課程的測驗
   const findQuizzesForCourse = async (req, res) => {
     const { courseId } = req.params;
     const currentUser = req.session["currentUser"];
-    
+
+    console.log(`嘗試獲取課程 ${courseId} 的測驗列表，當前用戶:`, currentUser ? currentUser._id : "未登入");
+
     if (!currentUser) {
-      res.status(401).json({ message: "未登入" });
-      return;
+      return res.status(401).json({ message: "未登入" });
     }
-    
-    let quizzes;
-    // 使用最新的 DAO 方法 - 學生只看已發布的測驗
-    if (currentUser.role === "STUDENT") {
-      quizzes = await dao.findPublishedForCourse(courseId);
-    } else {
-      quizzes = await dao.findQuizzesForCourse(courseId);
+
+    try {
+      let quizzes;
+      // 學生只看已發布的測驗
+      if (currentUser.role === "STUDENT") {
+        console.log(`學生角色: ${currentUser._id} 查詢課程 ${courseId} 的已發布測驗`);
+        quizzes = await dao.findPublishedForCourse(courseId);
+      } else {
+        console.log(`教師角色: ${currentUser._id} 查詢課程 ${courseId} 的所有測驗`);
+        quizzes = await dao.findQuizzesForCourse(courseId);
+      }
+      console.log(`成功獲取 ${quizzes.length} 個測驗`);
+      res.json(quizzes);
+    } catch (err) {
+      console.error(`查詢課程 ${courseId} 測驗時出錯:`, err);
+      res.status(500).json({ message: "查詢測驗失敗", error: err.message, stack: err.stack });
     }
-    
-    res.json(quizzes);
   };
-  
-  // 創建新測驗
+
+  // 創建測驗
   const createQuiz = async (req, res) => {
     try {
-      // 獲取當前用戶
       const currentUser = req.session["currentUser"];
-      
-      // 檢查用戶登入狀態 (強烈建議保留此驗證，但為測試可暫時注釋)
-      /*
       if (!currentUser) {
-        res.status(401).json({ message: "未登入" });
-        return;
+        return res.status(401).json({ message: "未登入" });
       }
-      
       if (currentUser.role !== "FACULTY") {
-        res.status(403).json({ message: "無權限創建測驗" });
-        return;
+        return res.status(403).json({ message: "無權限創建測驗" });
       }
-      */
-      
-      // 從URL參數獲取課程ID
+
       const { courseId } = req.params;
-      
-      // 創建有效的ObjectIds
-      const creatorId = new mongoose.Types.ObjectId();
-      const courseObjectId = mongoose.isValidObjectId(courseId) ? 
-        new mongoose.Types.createFromHexString(courseId) : new mongoose.Types.ObjectId();
-      
-      // 構建測驗數據，使用有效的ObjectIds
+      console.log(`嘗試為課程 ${courseId} 創建測驗，用戶:`, currentUser._id);
+
+      // 根據課程ID是否為ObjectId格式處理
+      let courseField;
+      if (mongoose.isValidObjectId(courseId)) {
+        courseField = { course: courseId };
+      } else {
+        // 如果是課程代碼如 RS101，只使用 courseCode
+        courseField = { courseCode: courseId };
+      }
+
+      // 只取 currentUser._id 字符串的最後部分，避免 ObjectId 轉換問題
+      const creatorId = currentUser._id.toString();
+
       const quiz = {
         ...req.body,
-        course: courseObjectId,
-        creator: currentUser && mongoose.isValidObjectId(currentUser._id) ? 
-          new mongoose.Types.createFromHexString(currentUser._id) : creatorId
+        ...courseField,  // 只包含一個字段：course 或 courseCode
+        creatorId: creatorId,  // 使用 creatorId 代替 creator
       };
       
-      console.log("從客戶端收到測驗創建請求：", {
-        title: quiz.title,
-        courseId: courseId,
-        finalCourse: quiz.course,
-        currentUser: currentUser ? currentUser._id : "未登入",
-        finalCreator: quiz.creator
-      });
-      
-      // 創建測驗
+      console.log("準備創建測驗:", JSON.stringify(quiz));
       const newQuiz = await dao.createQuiz(quiz);
-      console.log(`測驗創建成功，ID: ${newQuiz._id}`);
-      
+      console.log("測驗創建成功:", newQuiz._id);
       res.json(newQuiz);
     } catch (error) {
       console.error("創建測驗失敗:", error);
-      res.status(500).json({ message: "創建測驗失敗", error: error.message });
+      res.status(500).json({ message: "創建測驗失敗", error: error.message, stack: error.stack });
     }
   };
-  
-  // 獲取測驗詳情
+
+  // 查詢單一測驗
   const findQuizById = async (req, res) => {
     const { quizId } = req.params;
-    const quiz = await dao.findQuizById(quizId);
-    res.json(quiz);
+    try {
+      const quiz = await dao.findQuizById(quizId);
+      res.json(quiz);
+    } catch (err) {
+      res.status(500).json({ message: "查詢測驗失敗", error: err.message });
+    }
   };
-  
+
   // 更新測驗
   const updateQuiz = async (req, res) => {
     const { quizId } = req.params;
     const currentUser = req.session["currentUser"];
-    
     if (!currentUser) {
-      res.status(401).json({ message: "未登入" });
-      return;
+      return res.status(401).json({ message: "未登入" });
     }
-    
     if (currentUser.role !== "FACULTY") {
-      res.status(403).json({ message: "無權限更新測驗" });
-      return;
+      return res.status(403).json({ message: "無權限更新測驗" });
     }
-    
-    const quiz = await dao.updateQuiz(quizId, req.body);
-    res.json(quiz);
+
+    try {
+      const quiz = await dao.updateQuiz(quizId, req.body);
+      res.json(quiz);
+    } catch (err) {
+      res.status(500).json({ message: "更新測驗失敗", error: err.message });
+    }
   };
-  
+
   // 刪除測驗
   const deleteQuiz = async (req, res) => {
     const { quizId } = req.params;
     const currentUser = req.session["currentUser"];
-    
+
     if (!currentUser) {
-      res.status(401).json({ message: "未登入" });
-      return;
+      return res.status(401).json({ message: "未登入" });
     }
-    
     if (currentUser.role !== "FACULTY") {
-      res.status(403).json({ message: "無權限刪除測驗" });
-      return;
+      return res.status(403).json({ message: "無權限刪除測驗" });
     }
-    
-    const status = await dao.deleteQuiz(quizId);
-    res.json(status);
+
+    try {
+      const status = await dao.deleteQuiz(quizId);
+      res.json(status);
+    } catch (err) {
+      res.status(500).json({ message: "刪除測驗失敗", error: err.message });
+    }
   };
-  
+
   // 發布測驗
   const publishQuiz = async (req, res) => {
     const { quizId } = req.params;
-    const quiz = await dao.publishQuiz(quizId);
-    res.json(quiz);
+    try {
+      const quiz = await dao.publishQuiz(quizId);
+      res.json(quiz);
+    } catch (err) {
+      res.status(500).json({ message: "發布測驗失敗", error: err.message });
+    }
   };
-  
+
   // 取消發布測驗
   const unpublishQuiz = async (req, res) => {
     const { quizId } = req.params;
-    const quiz = await dao.unpublishQuiz(quizId);
-    res.json(quiz);
+    try {
+      const quiz = await dao.unpublishQuiz(quizId);
+      res.json(quiz);
+    } catch (err) {
+      res.status(500).json({ message: "取消發布測驗失敗", error: err.message });
+    }
   };
-  
+
   // 創建測驗嘗試
   const createAttempt = async (req, res) => {
     const { quizId } = req.params;
     const currentUser = req.session["currentUser"];
-    
     if (!currentUser) {
-      res.status(401).json({ message: "未登入" });
-      return;
+      return res.status(401).json({ message: "未登入" });
     }
-    
-    // 使用 DAO 方法檢查是否已達到嘗試次數上限
-    const limitReached = await dao.isAttemptLimitReached(currentUser._id, quizId);
-    if (limitReached) {
-      res.status(400).json({ message: "已達到嘗試次數上限" });
-      return;
+    try {
+      const limitReached = await dao.isAttemptLimitReached(currentUser._id, quizId);
+      if (limitReached) {
+        return res.status(400).json({ message: "已達到嘗試次數上限" });
+      }
+      const attempt = await dao.createAttempt({
+        user: currentUser._id,
+        quiz: quizId,
+        answers: [],
+        completed: false,
+        startTime: new Date(),
+      });
+      res.json(attempt);
+    } catch (err) {
+      res.status(500).json({ message: "創建測驗嘗試失敗", error: err.message });
     }
-    
-    const attempt = await dao.createAttempt({
-      user: currentUser._id,
-      quiz: quizId,
-      answers: [],
-      completed: false,
-      startTime: new Date(),
-    });
-    
-    res.json(attempt);
   };
-  
+
   // 提交測驗答案
   const submitAttempt = async (req, res) => {
     const { attemptId } = req.params;
-    const answers = req.body.answers;
+    const { answers } = req.body;
     const currentUser = req.session["currentUser"];
-    
     if (!currentUser) {
-      res.status(401).json({ message: "未登入" });
-      return;
+      return res.status(401).json({ message: "未登入" });
     }
-    
-    // 計算得分
-    const attempt = await dao.findAttemptById(attemptId);
-    const quiz = await dao.findQuizById(attempt.quiz);
-    
-    let score = 0;
-    const processedAnswers = answers.map(answer => {
-      let isCorrect = false;
-      const question = quiz.questions.id(answer.question);
-      
-      if (question.questionType === "MULTIPLE_CHOICE") {
-        const choice = question.choices.id(answer.answerChoice);
-        isCorrect = choice && choice.isCorrect;
-      } else if (question.questionType === "TRUE_FALSE") {
-        isCorrect = answer.answerBoolean === question.correctAnswer;
-      } else if (question.questionType === "FILL_BLANK") {
-        // 檢查填空題答案 (不區分大小寫)
-        const userAnswer = answer.answerText.toLowerCase().trim();
-        isCorrect = question.correctAnswers.some(
-          correctAnswer => correctAnswer.toLowerCase().trim() === userAnswer
-        );
-      }
-      
-      if (isCorrect) {
-        score += question.points;
-      }
-      
-      return {
-        ...answer,
-        isCorrect
-      };
-    });
-    
-    const updatedAttempt = await dao.updateAttempt(attemptId, {
-      answers: processedAnswers,
-      score,
-      completed: true,
-      endTime: new Date()
-    });
-    
-    res.json(updatedAttempt);
+    try {
+      const attempt = await dao.findAttemptById(attemptId);
+      const quiz = await dao.findQuizById(attempt.quiz);
+      let score = 0;
+
+      // 根據題目類型計算答案是否正確
+      const processedAnswers = answers.map((answer) => {
+        let isCorrect = false;
+        const question = quiz.questions.id(answer.question);
+        if (!question) return { ...answer, isCorrect: false };
+
+        if (question.questionType === "MULTIPLE_CHOICE") {
+          const choice = question.choices.id(answer.answerChoice);
+          isCorrect = choice && choice.isCorrect;
+        } else if (question.questionType === "TRUE_FALSE") {
+          isCorrect = answer.answerBoolean === question.correctAnswer;
+        } else if (question.questionType === "FILL_BLANK") {
+          const userAnswer = (answer.answerText || "").toLowerCase().trim();
+          isCorrect = question.correctAnswers.some(
+            (ca) => ca.toLowerCase().trim() === userAnswer
+          );
+        }
+        if (isCorrect) {
+          score += question.points;
+        }
+        return { ...answer, isCorrect };
+      });
+
+      // 更新嘗試紀錄
+      const updatedAttempt = await dao.updateAttempt(attemptId, {
+        answers: processedAnswers,
+        score,
+        completed: true,
+        endTime: new Date(),
+      });
+
+      res.json(updatedAttempt);
+    } catch (err) {
+      res.status(500).json({ message: "提交測驗失敗", error: err.message });
+    }
   };
-  
-  // 獲取用戶的測驗嘗試
+
+  // 查詢用戶在某個測驗的嘗試紀錄
   const findAttemptsForUserAndQuiz = async (req, res) => {
     const { quizId } = req.params;
     const currentUser = req.session["currentUser"];
-    
     if (!currentUser) {
-      res.status(401).json({ message: "未登入" });
-      return;
+      return res.status(401).json({ message: "未登入" });
     }
-    
-    const attempts = await dao.findAttemptForUserAndQuiz(currentUser._id, quizId);
-    res.json(attempts);
+    try {
+      const attempts = await dao.findAttemptForUserAndQuiz(currentUser._id, quizId);
+      res.json(attempts);
+    } catch (err) {
+      res.status(500).json({ message: "查詢嘗試失敗", error: err.message });
+    }
   };
-  
-  // DAO 測試路由
+
+  // 測試 DAO
   const testDAO = async (req, res) => {
     try {
-      console.log("執行 DAO 測試...");
       const result = await dao.testDAOFunctions();
       res.json({
         message: result.success ? "DAO 測試成功" : "DAO 測試失敗",
-        result
+        result,
       });
     } catch (error) {
-      console.error("DAO 測試路由錯誤:", error);
-      res.status(500).json({ 
-        message: "DAO 測試失敗",
-        error: error.message
-      });
+      res.status(500).json({ message: "DAO 測試失敗", error: error.message });
     }
   };
-  
-  // Model 層方法測試
+
+  // Model 方法測試 (範例)
   const testModelMethods = async (req, res) => {
     try {
-      console.log("執行 Model 層方法測試...");
+      // 導入需要的模型
+      const { Quiz, Attempt } = dao;
       
-      // 創建臨時測驗實例來測試 calculateTotalPoints 方法
-      const tempQuiz = new dao.Quiz({
+      // 建立臨時 Quiz 與 Attempt 來測試
+      const tempQuiz = new Quiz({
         title: "模型方法測試",
-        description: "測試計算總分方法",
         course: new mongoose.Types.ObjectId(),
         creator: new mongoose.Types.ObjectId(),
         questions: [
-          {
-            title: "問題1",
-            points: 2,
-            questionType: "MULTIPLE_CHOICE",
-            questionText: "測試問題1?",
-            choices: [{ text: "選項1", isCorrect: true }]
-          },
-          {
-            title: "問題2",
-            points: 3,
-            questionType: "TRUE_FALSE",
-            questionText: "測試問題2?",
-            correctAnswer: true
-          },
-          {
-            title: "問題3",
-            points: 5,
-            questionType: "FILL_BLANK",
-            questionText: "測試問題3?",
-            correctAnswers: ["答案"]
-          }
-        ]
+          { title: "Q1", points: 3, questionType: "MULTIPLE_CHOICE", questionText: "Test?" },
+          { title: "Q2", points: 2, questionType: "TRUE_FALSE", questionText: "Test2?" },
+        ],
       });
-      
-      // 測試計算總分方法
-      const calculatedPoints = tempQuiz.calculateTotalPoints();
-      const expectedPoints = 10; // 2 + 3 + 5
-      
-      // 測試嘗試分數計算方法
-      const tempAttempt = new dao.Attempt({
+      const calculatedPoints = tempQuiz.calculateTotalPoints(); // 預期 = 5
+
+      const tempAttempt = new Attempt({
         user: new mongoose.Types.ObjectId(),
         quiz: new mongoose.Types.ObjectId(),
         answers: [
-          { isCorrect: true, points: 2 },
-          { isCorrect: false, points: 3 },
-          { isCorrect: true, points: 5 }
-        ]
+          { isCorrect: true, points: 3 },
+          { isCorrect: false, points: 2 },
+        ],
       });
-      
-      const calculatedScore = tempAttempt.calculateScore();
-      const expectedScore = 7; // 2 + 0 + 5 (只計算正確答案)
-      
+      const calculatedScore = tempAttempt.calculateScore(); // 預期 = 3
+
       res.json({
         message: "Model 層方法測試完成",
-        results: {
-          calculateTotalPoints: {
-            calculated: calculatedPoints,
-            expected: expectedPoints,
-            passed: calculatedPoints === expectedPoints
-          },
-          calculateScore: {
-            calculated: calculatedScore,
-            expected: expectedScore,
-            passed: calculatedScore === expectedScore
-          }
-        }
+        quizPoints: calculatedPoints,
+        attemptScore: calculatedScore,
       });
-      
     } catch (error) {
-      console.error("Model 層方法測試失敗:", error);
-      res.status(500).json({ 
-        message: "Model 層方法測試失敗",
-        error: error.message
-      });
+      console.error("Model 測試失敗:", error);
+      res.status(500).json({ message: "Model 測試失敗", error: error.message, stack: error.stack });
     }
   };
-  
-  // 測試路由 - 用於驗證API功能
+
+  // 測試路由 (建立測驗 + 發布)
   const testQuiz = async (req, res) => {
     try {
       const { courseId } = req.params;
-      
-      // 建立一個新的有效ObjectId
       const userId = new mongoose.Types.ObjectId();
       
-      // 確保總是使用有效的ObjectId
-      const courseObjectId = mongoose.isValidObjectId(courseId) ? 
-        new mongoose.Types.createFromHexString(courseId) : new mongoose.Types.ObjectId();
-      
-      console.log("測試路由 - 創建測驗使用的參數:");
-      console.log("課程ID:", courseId);
-      console.log("用戶ID:", userId);
-      console.log("轉換後的課程ObjectId:", courseObjectId);
-      
-      // 創建一個測試測驗，明確指定所有必要欄位
-      const testQuiz = await dao.createQuiz({
+      console.log(`測試: 嘗試為課程 ${courseId} 創建測驗`);
+
+      // 根據課程ID是否為ObjectId格式處理
+      let courseField;
+      if (mongoose.isValidObjectId(courseId)) {
+        courseField = { course: courseId };
+        console.log("測試: 使用ObjectId形式的課程ID");
+      } else {
+        // 如果是課程代碼如 RS101
+        courseField = { courseCode: courseId };
+        console.log("測試: 使用課程代碼形式的課程ID");
+      }
+
+      const testQuizData = {
         title: "測試測驗",
-        description: "此測驗僅用於測試API",
-        course: courseObjectId, 
+        ...courseField,
         creator: userId,
         quizType: "GRADED_QUIZ",
-        totalPoints: 10,
-        questions: [
-          {
-            title: "測試問題1",
-            points: 5,
-            questionType: "MULTIPLE_CHOICE",
-            questionText: "這是一個測試問題嗎？",
-            choices: [
-              { text: "是", isCorrect: true },
-              { text: "否", isCorrect: false }
-            ]
-          },
-          {
-            title: "測試問題2",
-            points: 5,
-            questionType: "TRUE_FALSE",
-            questionText: "這個測試API是有效的",
-            correctAnswer: true
-          }
-        ]
-      });
+        questions: [],
+      };
       
-      // 發布測驗
+      console.log("測試: 測驗數據:", JSON.stringify(testQuizData));
+      const testQuiz = await dao.createQuiz(testQuizData);
+      console.log("測試: 測驗創建成功, ID:", testQuiz._id);
+      
       const publishedQuiz = await dao.publishQuiz(testQuiz._id);
-      
+      console.log("測試: 測驗發布成功");
+
       res.json({
         message: "測試成功",
-        quiz: publishedQuiz
+        quiz: publishedQuiz,
       });
     } catch (error) {
-      console.error("測試錯誤:", error);
+      console.error("測試失敗:", error);
       res.status(500).json({ 
-        message: "測試失敗",
+        message: "測試失敗", 
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
+        code: error.code
       });
     }
   };
-  
-  // 重要：先註冊測試路由，再註冊通用路由
-  // 註冊測試路由
+
+  // =============== 路由註冊 ===============
+  // 測試路由
   app.get("/api/quizzes/test-dao", testDAO);
   app.get("/api/quizzes/test-model", testModelMethods);
   app.get("/api/courses/:courseId/quizzes/test", testQuiz);
-  
-  // 註冊通用路由
+
+  // 一般功能路由
   app.get("/api/courses/:courseId/quizzes", findQuizzesForCourse);
   app.post("/api/courses/:courseId/quizzes", createQuiz);
   app.get("/api/quizzes/:quizId", findQuizById);
@@ -410,4 +354,3 @@ export default function QuizRoutes(app) {
   app.put("/api/attempts/:attemptId", submitAttempt);
   app.get("/api/quizzes/:quizId/attempts", findAttemptsForUserAndQuiz);
 }
-

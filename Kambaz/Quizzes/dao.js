@@ -1,119 +1,167 @@
-// dao.js
 import { Quiz, Attempt } from "./model.js";
 import mongoose from "mongoose";
 
-// 導出模型以供測試使用
+// 導出模型供路由使用
 export { Quiz, Attempt };
+
+// 輔助函數：將字串ID轉換為ObjectId
+const toObjectId = (id) => {
+  if (!id || !mongoose.isValidObjectId(id)) return id;
+  return typeof id === "string" ? new mongoose.Types.ObjectId(id) : id;
+};
 
 // ==================== 測驗相關操作 ====================
 
-// 基本 CRUD 操作
-export const createQuiz = (quiz) => {
-  // 確保quiz是有效對象
-  if (!quiz || typeof quiz !== 'object') {
-    console.error("創建測驗時提供了無效的數據");
-    throw new Error("無效的測驗數據");
-  }
-
-  // 確保 creator 是有效的 ObjectId
-  if (quiz.creator) {
-    if (typeof quiz.creator === 'string') {
-      try {
-        quiz.creator = new mongoose.Types.createFromHexString(quiz.creator);
-      } catch (err) {
-        console.error("創建測驗時 creator 轉換為 ObjectId 失敗:", err.message);
-        quiz.creator = new mongoose.Types.ObjectId();
-      }
-    }
-  } else {
-    console.error("創建測驗時缺少必填欄位 creator");
-    quiz.creator = new mongoose.Types.ObjectId();
+// 創建測驗
+export const createQuiz = async (quiz) => {
+  if (!quiz) {
+    throw new Error("缺少測驗數據");
   }
   
-  // 同樣處理 course 欄位
-  if (quiz.course) {
-    if (typeof quiz.course === 'string') {
-      try {
-        quiz.course = new mongoose.Types.createFromHexString(quiz.course);
-      } catch (err) {
-        console.error("創建測驗時 course 轉換為 ObjectId 失敗:", err.message);
-        quiz.course = new mongoose.Types.ObjectId();
-      }
-    }
-  } else {
-    console.error("創建測驗時缺少必填欄位 course");
-    quiz.course = new mongoose.Types.ObjectId();
+  console.log("創建測驗，原始數據:", JSON.stringify(quiz));
+  
+  // 確保 creator 與 course 如果是字串就轉 ObjectId
+  if (quiz.creator && typeof quiz.creator === "string" && mongoose.isValidObjectId(quiz.creator)) {
+    quiz.creator = toObjectId(quiz.creator);
   }
   
-  console.log("準備創建測驗，數據:", {
-    title: quiz.title,
-    course: quiz.course,
-    creator: quiz.creator
-  });
+  if (quiz.course && typeof quiz.course === "string" && mongoose.isValidObjectId(quiz.course)) {
+    quiz.course = toObjectId(quiz.course);
+  }
+  
+  // 檢查必要的字段
+  if (!quiz.course && !quiz.courseCode) {
+    throw new Error("缺少課程信息：需要 course 或 courseCode");
+  }
+  
+  if (!quiz.creator && !quiz.creatorId) {
+    throw new Error("缺少創建者信息：需要 creator 或 creatorId");
+  }
+  
+  // 確保在創建前移除同名但無效的字段
+  if (quiz.course && !mongoose.isValidObjectId(quiz.course) && typeof quiz.course === "string") {
+    console.log(`課程ID ${quiz.course} 不是有效的ObjectId，移除該字段並使用courseCode`);
+    quiz.courseCode = quiz.course;
+    delete quiz.course;
+  }
   
   return Quiz.create(quiz);
 };
 
-export const findQuizById = (quizId) => Quiz.findById(quizId);
-export const updateQuiz = (quizId, quiz) => Quiz.findByIdAndUpdate(quizId, quiz, { new: true });
-export const deleteQuiz = (quizId) => Quiz.findByIdAndDelete(quizId);
+export const findQuizById = (quizId) => {
+  return Quiz.findById(quizId);
+};
 
-// 業務邏輯查詢
-export const findQuizzesForCourse = (courseId) => Quiz.find({ course: courseId });
-export const findPublishedForCourse = (courseId) => Quiz.find({ course: courseId, published: true });
+export const updateQuiz = (quizId, quiz) => {
+  return Quiz.findByIdAndUpdate(quizId, quiz, { new: true });
+};
 
-// 狀態管理操作
-export const publishQuiz = (quizId) => 
-  Quiz.findByIdAndUpdate(quizId, { published: true }, { new: true });
-export const unpublishQuiz = (quizId) => 
-  Quiz.findByIdAndUpdate(quizId, { published: false }, { new: true });
+export const deleteQuiz = (quizId) => {
+  return Quiz.findByIdAndDelete(quizId);
+};
+
+export const findQuizzesForCourse = async (courseId) => {
+  try {
+    // 檢查是否為MongoDB ObjectId格式
+    let query = {};
+    if (mongoose.isValidObjectId(courseId)) {
+      query.course = toObjectId(courseId);
+      console.log(`使用ObjectId查詢課程測驗: ${courseId}`);
+    } else {
+      // 假設是課程代碼，如 "RS101"
+      query.courseCode = courseId;
+      console.log(`使用課程代碼查詢測驗: ${courseId}`);
+    }
+    
+    // 執行查詢並打印結果，幫助調試
+    const quizzes = await Quiz.find(query);
+    console.log(`找到 ${quizzes.length} 個測驗，查詢條件:`, JSON.stringify(query));
+    return quizzes;
+  } catch (error) {
+    console.error(`查詢課程 ${courseId} 測驗列表失敗:`, error);
+    throw error;
+  }
+};
+
+export const findPublishedForCourse = async (courseId) => {
+  try {
+    let query = { published: true };
+    if (mongoose.isValidObjectId(courseId)) {
+      query.course = toObjectId(courseId);
+      console.log(`使用ObjectId查詢已發佈測驗: ${courseId}`);
+    } else {
+      // 假設是課程代碼
+      query.courseCode = courseId;
+      console.log(`使用課程代碼查詢已發佈測驗: ${courseId}`);
+    }
+    
+    // 執行查詢並打印結果，幫助調試
+    const quizzes = await Quiz.find(query);
+    console.log(`找到 ${quizzes.length} 個已發佈測驗，查詢條件:`, JSON.stringify(query));
+    return quizzes;
+  } catch (error) {
+    console.error(`查詢課程 ${courseId} 已發佈測驗列表失敗:`, error);
+    throw error;
+  }
+};    
+
+export const publishQuiz = (quizId) => {
+  return Quiz.findByIdAndUpdate(quizId, { published: true }, { new: true });
+};
+
+export const unpublishQuiz = (quizId) => {
+  return Quiz.findByIdAndUpdate(quizId, { published: false }, { new: true });
+};
 
 // ==================== 測驗嘗試相關操作 ====================
 
-// 基本 CRUD 操作
-export const createAttempt = (attempt) => Attempt.create(attempt);
-export const findAttemptById = (attemptId) => Attempt.findById(attemptId);
-export const updateAttempt = (attemptId, attempt) => 
-  Attempt.findByIdAndUpdate(attemptId, attempt, { new: true });
+export const createAttempt = async (attempt) => {
+  return Attempt.create(attempt);
+};
 
-// 業務邏輯查詢
-export const findAttemptsForQuiz = (quizId) => Attempt.find({ quiz: quizId });
-export const findAttemptsForUser = (userId) => Attempt.find({ user: userId });
-export const findAttemptForUserAndQuiz = (userId, quizId) => 
-  Attempt.find({ user: userId, quiz: quizId }).sort('-createdAt');
+export const findAttemptById = (attemptId) => {
+  return Attempt.findById(attemptId);
+};
 
-// 複合業務邏輯
+export const updateAttempt = (attemptId, attempt) => {
+  return Attempt.findByIdAndUpdate(attemptId, attempt, { new: true });
+};
+
+export const findAttemptsForQuiz = (quizId) => {
+  return Attempt.find({ quiz: quizId });
+};
+
+export const findAttemptsForUser = (userId) => {
+  return Attempt.find({ user: userId });
+};
+
+export const findAttemptForUserAndQuiz = (userId, quizId) => {
+  return Attempt.find({ user: userId, quiz: quizId }).sort("-createdAt");
+};
+
+// 檢查是否超過嘗試次數
 export const isAttemptLimitReached = async (userId, quizId) => {
   const quiz = await findQuizById(quizId);
   const attempts = await findAttemptForUserAndQuiz(userId, quizId);
-  
+
   if (!quiz.multipleAttempts && attempts.length > 0) {
     return true;
   }
-  
   if (quiz.multipleAttempts && attempts.length >= quiz.attemptsAllowed) {
     return true;
   }
-  
   return false;
 };
 
-// ==================== 測試功能 ====================
+// ==================== 測試功能(選擇性) ====================
 
-/**
- * 綜合測試 DAO 層功能
- * 創建測驗、查詢測驗、更新測驗、創建嘗試等
- */
 export const testDAOFunctions = async () => {
   try {
     console.log("開始測試 DAO 層功能...");
-    
-    // 創建測試數據
     const courseId = new mongoose.Types.ObjectId();
     const userId = new mongoose.Types.ObjectId();
-    
+
     // 1. 創建測驗
-    console.log("1. 創建測驗...");
     const quiz = await createQuiz({
       title: "DAO 測試測驗",
       description: "測試 DAO 層功能",
@@ -128,57 +176,34 @@ export const testDAOFunctions = async () => {
           questionText: "這是測試問題嗎?",
           choices: [
             { text: "是", isCorrect: true },
-            { text: "否", isCorrect: false }
-          ]
-        }
-      ]
+            { text: "否", isCorrect: false },
+          ],
+        },
+      ],
     });
-    console.log(`測驗創建成功，ID: ${quiz._id}`);
-    
-    // 2. 查詢測驗
-    console.log("2. 查詢測驗...");
+
+    // 2. 查詢、更新、發布、等等...
     const foundQuiz = await findQuizById(quiz._id);
-    console.log(`查詢測驗成功: ${foundQuiz.title}`);
-    
-    // 3. 更新測驗
-    console.log("3. 更新測驗...");
     const updatedQuiz = await updateQuiz(quiz._id, { title: "更新的測驗標題" });
-    console.log(`更新測驗成功: ${updatedQuiz.title}`);
-    
-    // 4. 發布測驗
-    console.log("4. 發布測驗...");
     const publishedQuiz = await publishQuiz(quiz._id);
-    console.log(`發布測驗成功，published: ${publishedQuiz.published}`);
-    
-    // 5. 查詢課程的已發布測驗
-    console.log("5. 查詢課程的已發布測驗...");
-    const publishedQuizzes = await findPublishedForCourse(courseId);
-    console.log(`查詢已發布測驗成功，數量: ${publishedQuizzes.length}`);
-    
-    // 6. 創建測驗嘗試
-    console.log("6. 創建測驗嘗試...");
+
+    // 3. 創建測驗嘗試
     const attempt = await createAttempt({
       user: userId,
       quiz: quiz._id,
       answers: [],
       completed: false,
-      startTime: new Date()
+      startTime: new Date(),
     });
-    console.log(`創建測驗嘗試成功，ID: ${attempt._id}`);
-    
-    // 7. 測試嘗試次數限制
-    console.log("7. 測試嘗試次數限制...");
+
+    // 4. 檢查嘗試次數
     const limitReached = await isAttemptLimitReached(userId, quiz._id);
-    console.log(`嘗試次數限制檢查: ${limitReached ? "已達上限" : "未達上限"}`);
-    
-    // 8. 刪除測試數據
-    console.log("8. 刪除測試數據...");
+
+    // 5. 刪除測驗
     await deleteQuiz(quiz._id);
-    console.log("測試數據刪除成功");
-    
+
     console.log("DAO 層功能測試完成!");
-    return { success: true };
-    
+    return { success: true, limitReached };
   } catch (error) {
     console.error("DAO 層功能測試失敗:", error);
     return { success: false, error: error.message };
