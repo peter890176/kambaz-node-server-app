@@ -303,23 +303,27 @@ export default function QuizRoutes(app) {
       const { courseId } = req.params;
       const currentUser = req.session["currentUser"];
       
-      // 使用mongoose轉換ObjectId
+      // 使用mongoose建立有效的ObjectId
       const mongooseObjectId = mongoose.Types.ObjectId;
       
-      // 使用當前用戶ID或創建一個新的ObjectId
-      const userId = currentUser ? currentUser._id : new mongooseObjectId();
+      // 建立一個新的有效ObjectId用於creator欄位
+      const userId = new mongooseObjectId();
       
       console.log("測試路由 - 創建測驗使用的參數:");
       console.log("課程ID:", courseId);
       console.log("用戶ID:", userId);
       
+      // 確保course欄位有值，如果courseId為空，則使用備用ID
+      const courseObjectId = courseId ? 
+        (mongoose.isValidObjectId(courseId) ? courseId : new mongooseObjectId()) : 
+        new mongooseObjectId();
+      
       // 創建一個測試測驗
       const testQuiz = await dao.createQuiz({
         title: "測試測驗",
         description: "此測驗僅用於測試API",
-        // 使用隨機的ObjectId，測試路由不依賴於實際資料庫中的課程
-        course: new mongooseObjectId(),
-        creator: userId,
+        course: courseObjectId, // 確保使用有效的course值
+        creator: userId, // 使用有效的ObjectId
         quizType: "GRADED_QUIZ",
         totalPoints: 10,
         questions: [

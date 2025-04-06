@@ -8,7 +8,34 @@ export { Quiz, Attempt };
 // ==================== 測驗相關操作 ====================
 
 // 基本 CRUD 操作
-export const createQuiz = (quiz) => Quiz.create(quiz);
+export const createQuiz = (quiz) => {
+  // 確保 creator 是有效的 ObjectId
+  if (quiz.creator && typeof quiz.creator === 'string') {
+    try {
+      quiz.creator = new mongoose.Types.ObjectId(quiz.creator);
+    } catch (err) {
+      console.error("創建測驗時 creator 轉換為 ObjectId 失敗:", err.message);
+      // 如果無法轉換，創建一個新的 ObjectId
+      quiz.creator = new mongoose.Types.ObjectId();
+    }
+  }
+  
+  // 確保 course 欄位存在
+  if (!quiz.course) {
+    console.error("創建測驗時缺少必填欄位 course");
+    // 創建一個臨時 course ID
+    quiz.course = new mongoose.Types.ObjectId();
+  }
+  
+  console.log("準備創建測驗，數據:", {
+    title: quiz.title,
+    course: quiz.course,
+    creator: quiz.creator
+  });
+  
+  return Quiz.create(quiz);
+};
+
 export const findQuizById = (quizId) => Quiz.findById(quizId);
 export const updateQuiz = (quizId, quiz) => Quiz.findByIdAndUpdate(quizId, quiz, { new: true });
 export const deleteQuiz = (quizId) => Quiz.findByIdAndDelete(quizId);

@@ -46,9 +46,7 @@ const unenrollUserFromCourse = async (req, res) => {
   app.get("/api/users/:userId/enrollments", async (req, res) => {
     try {
       const { userId } = req.params;
-      console.log(`Fetching enrollments for user ${userId}`);
       const enrollments = await dao.findEnrollmentsByUser(userId);
-      console.log(`Found ${enrollments?.length || 0} enrollments:`, enrollments);
       res.json(enrollments || []);
     } catch (error) {
       console.error(`Error fetching enrollments for user ${req.params.userId}:`, error);

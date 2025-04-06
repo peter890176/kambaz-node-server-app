@@ -46,7 +46,11 @@ const AttemptSchema = new mongoose.Schema({
 const QuizSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, default: "" },
-  course: { type: mongoose.Schema.Types.ObjectId, ref: "Course", required: true },
+  course: { 
+    type: mongoose.Schema.Types.Mixed,  // 接受 ObjectId 或字符串
+    required: true,
+    ref: "Course" 
+  },
   creator: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   quizType: {
     type: String,
