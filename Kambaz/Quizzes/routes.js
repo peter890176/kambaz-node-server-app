@@ -149,14 +149,44 @@ export default function QuizRoutes(app) {
   const createAttempt = async (req, res) => {
     const { quizId } = req.params;
     const currentUser = req.session["currentUser"];
+    
+    console.log("創建測驗嘗試請求:", {
+      quizId,
+      currentUser: currentUser ? { 
+        _id: currentUser._id, 
+        username: currentUser.username,
+        role: currentUser.role
+      } : null
+    });
+    
     if (!currentUser) {
       return res.status(401).json({ message: "未登入" });
     }
+    
+    if (!quizId) {
+      return res.status(400).json({ message: "缺少測驗ID參數" });
+    }
+    
     try {
+      // 檢查測驗是否存在
+      const quiz = await dao.findQuizById(quizId);
+      if (!quiz) {
+        return res.status(404).json({ message: "找不到指定的測驗" });
+      }
+      
+      console.log(`檢查用戶 ${currentUser._id} 是否達到測驗 ${quizId} 的嘗試次數上限`);
       const limitReached = await dao.isAttemptLimitReached(currentUser._id, quizId);
       if (limitReached) {
         return res.status(400).json({ message: "已達到嘗試次數上限" });
       }
+      
+      console.log("準備創建嘗試記錄:", {
+        user: currentUser._id,
+        userType: typeof currentUser._id,
+        quiz: quizId,
+        quizType: typeof quizId
+      });
+      
       const attempt = await dao.createAttempt({
         user: currentUser._id,
         quiz: quizId,
@@ -164,23 +194,74 @@ export default function QuizRoutes(app) {
         completed: false,
         startTime: new Date(),
       });
+      
+      console.log("嘗試記錄創建成功:", attempt._id);
       res.json(attempt);
     } catch (err) {
-      res.status(500).json({ message: "創建測驗嘗試失敗", error: err.message });
+      console.error("創建測驗嘗試失敗:", err);
+      // 更詳細的錯誤響應
+      res.status(500).json({ 
+        message: "創建測驗嘗試失敗", 
+        error: err.message,
+        stack: process.env.NODE_ENV === 'production' ? null : err.stack,
+        context: {
+          quizId,
+          userId: currentUser ? currentUser._id : null
+        }
+      });
     }
   };
 
   // 提交測驗答案
   const submitAttempt = async (req, res) => {
     const { attemptId } = req.params;
-    const { answers } = req.body;
+    let { answers } = req.body;
     const currentUser = req.session["currentUser"];
+    
     if (!currentUser) {
       return res.status(401).json({ message: "未登入" });
     }
+    
     try {
+      console.log(`提交嘗試答案：嘗試ID=${attemptId}`);
+      
       const attempt = await dao.findAttemptById(attemptId);
+      if (!attempt) {
+        return res.status(404).json({ message: "找不到指定的嘗試記錄" });
+      }
+      
+      // 檢查當前用戶是否為嘗試的創建者
+      if (attempt.user.toString() !== currentUser._id.toString()) {
+        return res.status(403).json({ message: "無權限提交其他用戶的測驗" });
+      }
+      
       const quiz = await dao.findQuizById(attempt.quiz);
+      if (!quiz) {
+        return res.status(404).json({ message: "找不到相關測驗" });
+      }
+      
+      // 清理答案數據，處理空值和類型轉換問題
+      answers = answers.map(answer => {
+        // 處理 answerChoice 欄位
+        if (!answer.answerChoice || answer.answerChoice === '') {
+          delete answer.answerChoice;
+        }
+        
+        // 確保 boolean 值正確設置
+        if (answer.answerBoolean === null || answer.answerBoolean === undefined) {
+          delete answer.answerBoolean;
+        }
+        
+        // 確保 text 值有效
+        if (answer.answerText === null || answer.answerText === '') {
+          delete answer.answerText;
+        }
+        
+        return answer;
+      });
+      
+      console.log("處理後的答案數據:", JSON.stringify(answers));
+      
       let score = 0;
 
       // 根據題目類型計算答案是否正確
@@ -214,9 +295,15 @@ export default function QuizRoutes(app) {
         endTime: new Date(),
       });
 
+      console.log(`嘗試 ${attemptId} 提交成功，得分：${score}/${quiz.totalPoints}`);
       res.json(updatedAttempt);
     } catch (err) {
-      res.status(500).json({ message: "提交測驗失敗", error: err.message });
+      console.error("提交測驗失敗:", err);
+      res.status(500).json({ 
+        message: "提交測驗失敗", 
+        error: err.message,
+        stack: process.env.NODE_ENV === 'production' ? null : err.stack
+      });
     }
   };
 
@@ -224,14 +311,31 @@ export default function QuizRoutes(app) {
   const findAttemptsForUserAndQuiz = async (req, res) => {
     const { quizId } = req.params;
     const currentUser = req.session["currentUser"];
+    
+    console.log(`獲取用戶 ${currentUser ? currentUser._id : '未登入'} 的測驗 ${quizId} 嘗試記錄`);
+    
     if (!currentUser) {
       return res.status(401).json({ message: "未登入" });
     }
+    
     try {
+      console.log(`執行查詢: 用戶=${currentUser._id}, 測驗=${quizId}`);
       const attempts = await dao.findAttemptForUserAndQuiz(currentUser._id, quizId);
-      res.json(attempts);
+      
+      // 查詢到的嘗試按創建時間降序排序
+      const sortedAttempts = attempts.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      
+      console.log(`找到 ${sortedAttempts.length} 條嘗試記錄`);
+      res.json(sortedAttempts);
     } catch (err) {
-      res.status(500).json({ message: "查詢嘗試失敗", error: err.message });
+      console.error(`查詢嘗試失敗: ${err.message}`, err);
+      res.status(500).json({ 
+        message: "查詢嘗試失敗", 
+        error: err.message,
+        stack: process.env.NODE_ENV === 'production' ? null : err.stack
+      });
     }
   };
 

@@ -116,6 +116,20 @@ export const unpublishQuiz = (quizId) => {
 // ==================== 測驗嘗試相關操作 ====================
 
 export const createAttempt = async (attempt) => {
+  // 對於 quiz 字段，如果是有效的 ObjectId 字符串則轉換
+  if (attempt.quiz && typeof attempt.quiz === "string" && mongoose.isValidObjectId(attempt.quiz)) {
+    attempt.quiz = toObjectId(attempt.quiz);
+  }
+  
+  // user 字段不需要轉換，因為 schema 已修改為接受字符串類型
+  
+  console.log("創建測驗嘗試，處理後數據:", {
+    user: attempt.user,
+    userType: typeof attempt.user,
+    quiz: attempt.quiz,
+    quizType: typeof attempt.quiz
+  });
+  
   return Attempt.create(attempt);
 };
 
@@ -136,13 +150,33 @@ export const findAttemptsForUser = (userId) => {
 };
 
 export const findAttemptForUserAndQuiz = (userId, quizId) => {
+  // 只轉換有效的 ObjectId 格式字符串
+  if (typeof quizId === "string" && mongoose.isValidObjectId(quizId)) {
+    quizId = toObjectId(quizId);
+  }
+  
+  // userId 可能是字符串，不需要轉換
+  console.log(`查詢用戶 ${userId} 的測驗 ${quizId} 嘗試記錄`);
   return Attempt.find({ user: userId, quiz: quizId }).sort("-createdAt");
 };
 
 // 檢查是否超過嘗試次數
 export const isAttemptLimitReached = async (userId, quizId) => {
+  // 只轉換有效的 ObjectId 格式字符串
+  if (typeof quizId === "string" && mongoose.isValidObjectId(quizId)) {
+    quizId = toObjectId(quizId);
+  }
+  
+  // userId 可能是字符串，不需要轉換
+  
   const quiz = await findQuizById(quizId);
+  if (!quiz) {
+    throw new Error(`找不到ID為 ${quizId} 的測驗`);
+  }
+  
+  console.log(`檢查用戶 ${userId} 在測驗 ${quizId} 的嘗試次數限制，允許多次嘗試: ${quiz.multipleAttempts}, 允許次數: ${quiz.attemptsAllowed}`);
   const attempts = await findAttemptForUserAndQuiz(userId, quizId);
+  console.log(`用戶已有 ${attempts.length} 次嘗試`);
 
   if (!quiz.multipleAttempts && attempts.length > 0) {
     return true;

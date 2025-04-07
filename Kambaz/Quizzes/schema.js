@@ -24,14 +24,36 @@ const QuestionSchema = new mongoose.Schema(
 
 const AttemptSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    quiz: { type: mongoose.Schema.Types.ObjectId, ref: "Quiz", required: true },
+    user: { 
+      type: String, 
+      ref: "User", 
+      required: true
+    },
+    quiz: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "Quiz", 
+      required: true,
+      get: v => v ? v.toString() : v
+    },
     answers: [
       {
-        question: { type: mongoose.Schema.Types.ObjectId },
-        answerChoice: { type: mongoose.Schema.Types.ObjectId },
-        answerBoolean: Boolean,
-        answerText: String,
+        question: { 
+          type: mongoose.Schema.Types.ObjectId,
+          get: v => v ? v.toString() : v
+        },
+        answerChoice: { 
+          type: mongoose.Schema.Types.ObjectId,
+          get: v => v ? v.toString() : v,
+          required: false
+        },
+        answerBoolean: { 
+          type: Boolean,
+          default: null
+        },
+        answerText: { 
+          type: String,
+          default: ""
+        },
         isCorrect: { type: Boolean, default: false },
       },
     ],
@@ -40,7 +62,11 @@ const AttemptSchema = new mongoose.Schema(
     startTime: { type: Date, default: Date.now },
     endTime: { type: Date },
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true }
+  }
 );
 
 const QuizSchema = new mongoose.Schema(
