@@ -4,7 +4,7 @@ import cors from "cors";
 import session from "express-session";
 import "dotenv/config";
 
-// === 路由匯入 ===
+// === Route Imports ===
 import UserRoutes from "./Kambaz/Users/routes.js";
 import CourseRoutes from "./Kambaz/Courses/routes.js";
 import ModuleRoutes from "./Kambaz/Modules/routes.js";
@@ -12,18 +12,18 @@ import AssignmentRoutes from "./Kambaz/Assignments/routes.js";
 import EnrollmentRoutes from "./Kambaz/Enrollments/routes.js";
 import QuizRoutes from "./Kambaz/Quizzes/routes.js";
 
-// === MongoDB 連線 ===
+// === MongoDB Connection ===
 const CONNECTION_STRING =
   process.env.MONGO_CONNECTION_STRING || "mongodb://127.0.0.1:27017/kambaz";
 
 mongoose
   .connect(CONNECTION_STRING)
-  .then(() => console.log("MongoDB 連線成功"))
-  .catch((err) => console.error("MongoDB 連線失敗：", err));
+  .then(() => console.log("MongoDB connection successful"))
+  .catch((err) => console.error("MongoDB connection failed:", err));
 
 const app = express();
 
-// === CORS 設定 ===
+// === CORS Configuration ===
 app.use(
   cors({
     credentials: true,
@@ -31,7 +31,7 @@ app.use(
   })
 );
 
-// === Session 設定 ===
+// === Session Configuration ===
 const sessionOptions = {
   secret: process.env.SESSION_SECRET || "kambaz",
   resave: false,
@@ -48,10 +48,10 @@ if (process.env.NODE_ENV !== "development") {
 }
 app.use(session(sessionOptions));
 
-// === 解析 JSON ===
+// === Parse JSON ===
 app.use(express.json());
 
-// === 路由 ===
+// === Routes ===
 UserRoutes(app);
 CourseRoutes(app);
 ModuleRoutes(app);
@@ -61,5 +61,5 @@ QuizRoutes(app);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`伺服器啟動，正在監聽 port: ${PORT}`);
+  console.log(`Server started, listening on port: ${PORT}`);
 });
