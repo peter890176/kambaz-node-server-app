@@ -120,7 +120,7 @@ const QuizSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 若有需要虛擬屬性，可加上
+// If virtual properties are needed, they can be added like this:
 // QuizSchema.virtual('courseId').get(function() {
 //   return this.course.toString();
 // });
@@ -128,7 +128,7 @@ const QuizSchema = new mongoose.Schema(
 //   return this.creator.toString();
 // });
 
-// 讓 toJSON 包含 virtuals
+// Make toJSON include virtuals
 QuizSchema.set("toJSON", { virtuals: true });
 
 export { QuizSchema, AttemptSchema, QuestionSchema, ChoiceSchema };

@@ -1,26 +1,26 @@
 import { Quiz, Attempt } from "./model.js";
 import mongoose from "mongoose";
 
-// 導出模型供路由使用
+// Export models for routes to use
 export { Quiz, Attempt };
 
-// 輔助函數：將字串ID轉換為ObjectId
+// Helper function: Convert string ID to ObjectId
 const toObjectId = (id) => {
   if (!id || !mongoose.isValidObjectId(id)) return id;
   return typeof id === "string" ? new mongoose.Types.ObjectId(id) : id;
 };
 
-// ==================== 測驗相關操作 ====================
+// ==================== Quiz Operations ====================
 
-// 創建測驗
+// Create quiz
 export const createQuiz = async (quiz) => {
   if (!quiz) {
-    throw new Error("缺少測驗數據");
+    throw new Error("Missing quiz data");
   }
   
-  console.log("創建測驗，原始數據:", JSON.stringify(quiz));
+  console.log("Creating quiz, original data:", JSON.stringify(quiz));
   
-  // 確保 creator 與 course 如果是字串就轉 ObjectId
+  // Ensure creator and course are converted to ObjectId if they are strings
   if (quiz.creator && typeof quiz.creator === "string" && mongoose.isValidObjectId(quiz.creator)) {
     quiz.creator = toObjectId(quiz.creator);
   }
@@ -29,18 +29,18 @@ export const createQuiz = async (quiz) => {
     quiz.course = toObjectId(quiz.course);
   }
   
-  // 檢查必要的字段
+  // Check required fields
   if (!quiz.course && !quiz.courseCode) {
-    throw new Error("缺少課程信息：需要 course 或 courseCode");
+    throw new Error("Missing course information: course or courseCode required");
   }
   
   if (!quiz.creator && !quiz.creatorId) {
-    throw new Error("缺少創建者信息：需要 creator 或 creatorId");
+    throw new Error("Missing creator information: creator or creatorId required");
   }
   
-  // 確保在創建前移除同名但無效的字段
+  // Ensure invalid fields with the same name are removed before creation
   if (quiz.course && !mongoose.isValidObjectId(quiz.course) && typeof quiz.course === "string") {
-    console.log(`課程ID ${quiz.course} 不是有效的ObjectId，移除該字段並使用courseCode`);
+    console.log(`Course ID ${quiz.course} is not a valid ObjectId, removing this field and using courseCode`);
     quiz.courseCode = quiz.course;
     delete quiz.course;
   }
@@ -62,23 +62,23 @@ export const deleteQuiz = (quizId) => {
 
 export const findQuizzesForCourse = async (courseId) => {
   try {
-    // 檢查是否為MongoDB ObjectId格式
+    // Check if it's a MongoDB ObjectId format
     let query = {};
     if (mongoose.isValidObjectId(courseId)) {
       query.course = toObjectId(courseId);
-      console.log(`使用ObjectId查詢課程測驗: ${courseId}`);
+      console.log(`Using ObjectId to query course quizzes: ${courseId}`);
     } else {
-      // 假設是課程代碼，如 "RS101"
+      // Assume it's a course code like "RS101"
       query.courseCode = courseId;
-      console.log(`使用課程代碼查詢測驗: ${courseId}`);
+      console.log(`Using course code to query quizzes: ${courseId}`);
     }
     
-    // 執行查詢並打印結果，幫助調試
+    // Execute query and print results for debugging
     const quizzes = await Quiz.find(query);
-    console.log(`找到 ${quizzes.length} 個測驗，查詢條件:`, JSON.stringify(query));
+    console.log(`Found ${quizzes.length} quizzes, query conditions:`, JSON.stringify(query));
     return quizzes;
   } catch (error) {
-    console.error(`查詢課程 ${courseId} 測驗列表失敗:`, error);
+    console.error(`Failed to query quiz list for course ${courseId}:`, error);
     throw error;
   }
 };
@@ -88,19 +88,19 @@ export const findPublishedForCourse = async (courseId) => {
     let query = { published: true };
     if (mongoose.isValidObjectId(courseId)) {
       query.course = toObjectId(courseId);
-      console.log(`使用ObjectId查詢已發佈測驗: ${courseId}`);
+      console.log(`Using ObjectId to query published quizzes: ${courseId}`);
     } else {
-      // 假設是課程代碼
+      // Assume it's a course code
       query.courseCode = courseId;
-      console.log(`使用課程代碼查詢已發佈測驗: ${courseId}`);
+      console.log(`Using course code to query published quizzes: ${courseId}`);
     }
     
-    // 執行查詢並打印結果，幫助調試
+    // Execute query and print results for debugging
     const quizzes = await Quiz.find(query);
-    console.log(`找到 ${quizzes.length} 個已發佈測驗，查詢條件:`, JSON.stringify(query));
+    console.log(`Found ${quizzes.length} published quizzes, query conditions:`, JSON.stringify(query));
     return quizzes;
   } catch (error) {
-    console.error(`查詢課程 ${courseId} 已發佈測驗列表失敗:`, error);
+    console.error(`Failed to query published quiz list for course ${courseId}:`, error);
     throw error;
   }
 };    
@@ -113,17 +113,17 @@ export const unpublishQuiz = (quizId) => {
   return Quiz.findByIdAndUpdate(quizId, { published: false }, { new: true });
 };
 
-// ==================== 測驗嘗試相關操作 ====================
+// ==================== Quiz Attempt Operations ====================
 
 export const createAttempt = async (attempt) => {
-  // 對於 quiz 字段，如果是有效的 ObjectId 字符串則轉換
+  // For the quiz field, convert if it's a valid ObjectId string
   if (attempt.quiz && typeof attempt.quiz === "string" && mongoose.isValidObjectId(attempt.quiz)) {
     attempt.quiz = toObjectId(attempt.quiz);
   }
   
-  // user 字段不需要轉換，因為 schema 已修改為接受字符串類型
+  // user field doesn't need conversion, as schema has been modified to accept string type
   
-  console.log("創建測驗嘗試，處理後數據:", {
+  console.log("Creating quiz attempt, processed data:", {
     user: attempt.user,
     userType: typeof attempt.user,
     quiz: attempt.quiz,
@@ -150,33 +150,33 @@ export const findAttemptsForUser = (userId) => {
 };
 
 export const findAttemptForUserAndQuiz = (userId, quizId) => {
-  // 只轉換有效的 ObjectId 格式字符串
+  // Only convert valid ObjectId format strings
   if (typeof quizId === "string" && mongoose.isValidObjectId(quizId)) {
     quizId = toObjectId(quizId);
   }
   
-  // userId 可能是字符串，不需要轉換
-  console.log(`查詢用戶 ${userId} 的測驗 ${quizId} 嘗試記錄`);
+  // userId might be a string, no need to convert
+  console.log(`Querying attempts for user ${userId} on quiz ${quizId}`);
   return Attempt.find({ user: userId, quiz: quizId }).sort("-createdAt");
 };
 
-// 檢查是否超過嘗試次數
+// Check if attempt limit has been reached
 export const isAttemptLimitReached = async (userId, quizId) => {
-  // 只轉換有效的 ObjectId 格式字符串
+  // Only convert valid ObjectId format strings
   if (typeof quizId === "string" && mongoose.isValidObjectId(quizId)) {
     quizId = toObjectId(quizId);
   }
   
-  // userId 可能是字符串，不需要轉換
+  // userId might be a string, no need to convert
   
   const quiz = await findQuizById(quizId);
   if (!quiz) {
-    throw new Error(`找不到ID為 ${quizId} 的測驗`);
+    throw new Error(`Quiz with ID ${quizId} not found`);
   }
   
-  console.log(`檢查用戶 ${userId} 在測驗 ${quizId} 的嘗試次數限制，允許多次嘗試: ${quiz.multipleAttempts}, 允許次數: ${quiz.attemptsAllowed}`);
+  console.log(`Checking attempt limit for user ${userId} on quiz ${quizId}, multiple attempts allowed: ${quiz.multipleAttempts}, allowed attempts: ${quiz.attemptsAllowed}`);
   const attempts = await findAttemptForUserAndQuiz(userId, quizId);
-  console.log(`用戶已有 ${attempts.length} 次嘗試`);
+  console.log(`User has ${attempts.length} attempts`);
 
   if (!quiz.multipleAttempts && attempts.length > 0) {
     return true;
@@ -187,41 +187,41 @@ export const isAttemptLimitReached = async (userId, quizId) => {
   return false;
 };
 
-// ==================== 測試功能(選擇性) ====================
+// ==================== Test Functions (Optional) ====================
 
 export const testDAOFunctions = async () => {
   try {
-    console.log("開始測試 DAO 層功能...");
+    console.log("Starting DAO layer function tests...");
     const courseId = new mongoose.Types.ObjectId();
     const userId = new mongoose.Types.ObjectId();
 
-    // 1. 創建測驗
+    // 1. Create quiz
     const quiz = await createQuiz({
-      title: "DAO 測試測驗",
-      description: "測試 DAO 層功能",
+      title: "DAO Test Quiz",
+      description: "Testing DAO layer functionality",
       course: courseId,
       creator: userId,
       quizType: "GRADED_QUIZ",
       questions: [
         {
-          title: "問題1",
+          title: "Question 1",
           points: 5,
           questionType: "MULTIPLE_CHOICE",
-          questionText: "這是測試問題嗎?",
+          questionText: "Is this a test question?",
           choices: [
-            { text: "是", isCorrect: true },
-            { text: "否", isCorrect: false },
+            { text: "Yes", isCorrect: true },
+            { text: "No", isCorrect: false },
           ],
         },
       ],
     });
 
-    // 2. 查詢、更新、發布、等等...
+    // 2. Query, update, publish, etc.
     const foundQuiz = await findQuizById(quiz._id);
-    const updatedQuiz = await updateQuiz(quiz._id, { title: "更新的測驗標題" });
+    const updatedQuiz = await updateQuiz(quiz._id, { title: "Updated Quiz Title" });
     const publishedQuiz = await publishQuiz(quiz._id);
 
-    // 3. 創建測驗嘗試
+    // 3. Create quiz attempt
     const attempt = await createAttempt({
       user: userId,
       quiz: quiz._id,
@@ -230,16 +230,16 @@ export const testDAOFunctions = async () => {
       startTime: new Date(),
     });
 
-    // 4. 檢查嘗試次數
+    // 4. Check attempt limit
     const limitReached = await isAttemptLimitReached(userId, quiz._id);
 
-    // 5. 刪除測驗
+    // 5. Delete quiz
     await deleteQuiz(quiz._id);
 
-    console.log("DAO 層功能測試完成!");
+    console.log("DAO layer function tests completed!");
     return { success: true, limitReached };
   } catch (error) {
-    console.error("DAO 層功能測試失敗:", error);
+    console.error("DAO layer function tests failed:", error);
     return { success: false, error: error.message };
   }
 };
