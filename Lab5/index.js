@@ -10,4 +10,6 @@ export default function Lab5(app) {
     QueryParameters(app);
     WorkingWithObjects(app);  
     WorkingWithArrays(app);
+
+    
   };
